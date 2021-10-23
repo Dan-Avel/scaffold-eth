@@ -1,13 +1,13 @@
 import WalletConnectProvider from "@walletconnect/web3-provider";
 //import Torus from "@toruslabs/torus-embed"
 import WalletLink from "walletlink";
-import { Alert, Button, Col, Menu, Row } from "antd";
+import { Alert, Button, Col, Menu, Row, List } from "antd";
 import "antd/dist/antd.css";
 import React, { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
 import Web3Modal from "web3modal";
 import "./App.css";
-import { Account, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch } from "./components";
+import { Account, Address, Balance, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch } from "./components";
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 import {
@@ -23,21 +23,18 @@ import { useExchangeEthPrice } from "eth-hooks/dapps/dex";
 // import Hints from "./Hints";
 import { ExampleUI, Hints, Subgraph } from "./views";
 
-// contracts
-import deployedContracts from "./contracts/hardhat_contracts.json";
-import externalContracts from "./contracts/external_contracts";
-
 import { useContractConfig } from "./hooks";
 import Portis from "@portis/web3";
 import Fortmatic from "fortmatic";
 import Authereum from "authereum";
+import humanizeDuration from "humanize-duration";
 
 const { ethers } = require("ethers");
 /*
     Welcome to 🏗 scaffold-eth !
 
     Code:
-    https://github.com/scaffold-eth/scaffold-eth
+    https://github.com/austintgriffith/scaffold-eth
 
     Support:
     https://t.me/joinchat/KByvmRe5wkR-8F_zz6AjpA
@@ -78,6 +75,7 @@ const mainnetInfura = navigator.onLine
   ? new ethers.providers.StaticJsonRpcProvider("https://mainnet.infura.io/v3/" + INFURA_ID)
   : null;
 // ( ⚠️ Getting "failed to meet quorum" errors? Check your INFURA_ID
+
 // 🏠 Your local provider is usually pointed at your local blockchain
 const localProviderUrl = targetNetwork.rpcUrl;
 // as you deploy to other networks you can set REACT_APP_PROVIDER=https://dai.poa.network in packages/react-app/.env
@@ -224,9 +222,7 @@ function App(props) {
   // Just plug in different 🛰 providers to get your balance on different chains:
   const yourMainnetBalance = useBalance(mainnetProvider, address);
 
-  // const contractConfig = useContractConfig();
-
-  const contractConfig = { deployedContracts: deployedContracts || {}, externalContracts: externalContracts || {} };
+  const contractConfig = useContractConfig();
 
   // Load in your local 📝 contract and read a value from it:
   const readContracts = useContractLoader(localProvider, contractConfig);
@@ -249,15 +245,52 @@ function App(props) {
     "0x34aA3F359A9D614239015126635CE7732c18fDF3",
   ]);
 
-  // keep track of a variable from the contract in the local React state:
-  const purpose = useContractReader(readContracts, "YourContract", "purpose");
+  //keep track of contract balance to know how much has been staked total:
+  const stakerContractBalance = useBalance(
+    localProvider,
+    readContracts && readContracts.Staker ? readContracts.Staker.address : null,
+  );
+  if (DEBUG) console.log("💵 stakerContractBalance", stakerContractBalance);
 
-  // 📟 Listen for broadcast events
-  const setPurposeEvents = useEventListener(readContracts, "YourContract", "SetPurpose", localProvider, 1);
+  // ** keep track of total 'threshold' needed of ETH
+  const threshold = useContractReader(readContracts, "Staker", "threshold");
+  console.log("💵 threshold:", threshold);
+
+  // ** keep track of a variable from the contract in the local React state:
+  const balanceStaked = useContractReader(readContracts, "Staker", "balances", [address]);
+  console.log("💸 balanceStaked:", balanceStaked);
+
+  // ** 📟 Listen for broadcast events
+  const stakeEvents = useEventListener(readContracts, "Staker", "Stake", localProvider, 1);
+  console.log("📟 stake events:", stakeEvents);
+
+  // ** keep track of a variable from the contract in the local React state:
+  const timeLeft = useContractReader(readContracts, "Staker", "timeLeft");
+  console.log("⏳ timeLeft:", timeLeft);
+
+  // ** Listen for when the contract has been 'completed'
+  const complete = useContractReader(readContracts, "ExampleExternalContract", "completed");
+  console.log("✅ complete:", complete);
+
+  const exampleExternalContractBalance = useBalance(
+    localProvider,
+    readContracts && readContracts.ExampleExternalContract ? readContracts.ExampleExternalContract.address : null,
+  );
+  if (DEBUG) console.log("💵 exampleExternalContractBalance", exampleExternalContractBalance);
+
+  let completeDisplay = "";
+  if (complete) {
+    completeDisplay = (
+      <div style={{ padding: 64, backgroundColor: "#eeffef", fontWeight: "bolder" }}>
+        🚀 🎖 👩‍🚀 - Staking App triggered `ExampleExternalContract` -- 🎉 🍾 🎊
+        <Balance balance={exampleExternalContractBalance} fontSize={64} /> ETH staked!
+      </div>
+    );
+  }
 
   /*
   const addressFromENS = useResolveName(mainnetProvider, "austingriffith.eth");
-  console.log("🏷 Resolved austingriffith.eth as:",addressFromENS)
+  console.log("🏷 Resolved austingriffith.eth as:", addressFromENS)
   */
 
   //
@@ -459,119 +492,121 @@ function App(props) {
               }}
               to="/"
             >
-              YourContract
+              Staker UI
             </Link>
           </Menu.Item>
-          <Menu.Item key="/hints">
+          <Menu.Item key="/contracts">
             <Link
               onClick={() => {
-                setRoute("/hints");
+                setRoute("/contracts");
               }}
-              to="/hints"
+              to="/contracts"
             >
-              Hints
-            </Link>
-          </Menu.Item>
-          <Menu.Item key="/exampleui">
-            <Link
-              onClick={() => {
-                setRoute("/exampleui");
-              }}
-              to="/exampleui"
-            >
-              ExampleUI
-            </Link>
-          </Menu.Item>
-          <Menu.Item key="/mainnetdai">
-            <Link
-              onClick={() => {
-                setRoute("/mainnetdai");
-              }}
-              to="/mainnetdai"
-            >
-              Mainnet DAI
-            </Link>
-          </Menu.Item>
-          <Menu.Item key="/subgraph">
-            <Link
-              onClick={() => {
-                setRoute("/subgraph");
-              }}
-              to="/subgraph"
-            >
-              Subgraph
+              Debug Contracts
             </Link>
           </Menu.Item>
         </Menu>
 
         <Switch>
           <Route exact path="/">
+            {completeDisplay}
+
+            <div style={{ padding: 8, marginTop: 32 }}>
+              <div>Timeleft:</div>
+              {timeLeft && humanizeDuration(timeLeft.toNumber() * 1000)}
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <div>Total staked:</div>
+              <Balance balance={stakerContractBalance} fontSize={64} />/<Balance balance={threshold} fontSize={64} />
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <div>You staked:</div>
+              <Balance balance={balanceStaked} fontSize={64} />
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <Button
+                type={"default"}
+                onClick={() => {
+                  tx(writeContracts.Staker.execute());
+                }}
+              >
+                📡 Execute!
+              </Button>
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <Button
+                type={"default"}
+                onClick={() => {
+                  tx(writeContracts.Staker.withdraw());
+                }}
+              >
+                🏧 Withdraw
+              </Button>
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <Button
+                type={balanceStaked ? "success" : "primary"}
+                onClick={() => {
+                  tx(writeContracts.Staker.stake({ value: ethers.utils.parseEther("0.5") }));
+                }}
+              >
+                🥩 Stake 0.5 ether!
+              </Button>
+            </div>
+
             {/*
                 🎛 this scaffolding is full of commonly used components
                 this <Contract/> component will automatically parse your ABI
                 and give you a form to interact with it locally
             */}
 
+            <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
+              <div>Stake Events:</div>
+              <List
+                dataSource={stakeEvents}
+                renderItem={item => {
+                  return (
+                    <List.Item key={item.blockNumber}>
+                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> =>
+                      <Balance balance={item.args[1]} />
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
+
+            {/* uncomment for a second contract:
             <Contract
-              name="YourContract"
+              name="SecondContract"
+              signer={userProvider.getSigner()}
+              provider={localProvider}
+              address={address}
+              blockExplorer={blockExplorer}
+              contractConfig={contractConfig}
+            />
+            */}
+          </Route>
+          <Route path="/contracts">
+            <Contract
+              name="Staker"
               signer={userSigner}
               provider={localProvider}
               address={address}
               blockExplorer={blockExplorer}
               contractConfig={contractConfig}
             />
-          </Route>
-          <Route path="/hints">
-            <Hints
-              address={address}
-              yourLocalBalance={yourLocalBalance}
-              mainnetProvider={mainnetProvider}
-              price={price}
-            />
-          </Route>
-          <Route path="/exampleui">
-            <ExampleUI
-              address={address}
-              userSigner={userSigner}
-              mainnetProvider={mainnetProvider}
-              localProvider={localProvider}
-              yourLocalBalance={yourLocalBalance}
-              price={price}
-              tx={tx}
-              writeContracts={writeContracts}
-              readContracts={readContracts}
-              purpose={purpose}
-              setPurposeEvents={setPurposeEvents}
-            />
-          </Route>
-          <Route path="/mainnetdai">
             <Contract
-              name="DAI"
-              customContract={mainnetContracts && mainnetContracts.contracts && mainnetContracts.contracts.DAI}
+              name="ExampleExternalContract"
               signer={userSigner}
-              provider={mainnetProvider}
+              provider={localProvider}
               address={address}
-              blockExplorer="https://etherscan.io/"
+              blockExplorer={blockExplorer}
               contractConfig={contractConfig}
-              chainId={1}
-            />
-            {/*
-            <Contract
-              name="UNI"
-              customContract={mainnetContracts && mainnetContracts.contracts && mainnetContracts.contracts.UNI}
-              signer={userSigner}
-              provider={mainnetProvider}
-              address={address}
-              blockExplorer="https://etherscan.io/"
-            />
-            */}
-          </Route>
-          <Route path="/subgraph">
-            <Subgraph
-              subgraphUri={props.subgraphUri}
-              tx={tx}
-              writeContracts={writeContracts}
-              mainnetProvider={mainnetProvider}
             />
           </Route>
         </Switch>
@@ -593,6 +628,17 @@ function App(props) {
           blockExplorer={blockExplorer}
         />
         {faucetHint}
+      </div>
+
+      <div style={{ marginTop: 32, opacity: 0.5 }}>
+        {/* Add your address here */}
+        Created by <Address value={"Your...address"} ensProvider={mainnetProvider} fontSize={16} />
+      </div>
+
+      <div style={{ marginTop: 32, opacity: 0.5 }}>
+        <a target="_blank" style={{ padding: 32, color: "#000" }} href="https://github.com/scaffold-eth/scaffold-eth">
+          🍴 Fork me!
+        </a>
       </div>
 
       {/* 🗺 Extra UI like gas price, eth price, faucet, and support: */}
