@@ -26,7 +26,7 @@ const { isAddress, getAddress, formatUnits, parseUnits } = utils;
 //
 // Select the network you want to deploy to here:
 //
-const defaultNetwork = "rinkeby";
+const defaultNetwork = "localhost";
 
 const mainnetGwei = 21;
 
@@ -302,7 +302,7 @@ module.exports = {
   ovm: {
     solcVersion: "0.7.6",
   },
-  namedAccounts: {
+  namedAccounts : {
     deployer: {
       default: 0, // here this will by default take the first account as deployer
     },

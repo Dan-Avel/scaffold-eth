@@ -1,6 +1,6 @@
 // deploy/00_deploy_your_contract.js
 
-//const { ethers } = require("hardhat");
+const { ethers } = require("hardhat");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy } = deployments;
@@ -13,8 +13,12 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
 
   //Todo: transfer tokens to frontend address
-  const yourToken = await ethers.getContract("YourToken", deployer)
-  const result = await yourToken.transfer("YOUR_FRONT_END_ADDRESS", ethers.utils.parseEther("1000") );
+  const yourToken = await ethers.getContract("YourToken", deployer);
+  await ethers.provider.getSigner().sendTransaction({
+              to: "0x05d5864ff7fc249257f37fbd25f524058aaaf66c",
+              value: ethers.utils.parseEther("20000.00")
+            });
+  const result = await yourToken.transfer("0x80D2FbE61F494C59d97E173bfb6b5aE2F13b4De1", ethers.utils.parseEther("25") );
   /*
     // Getting a previously deployed contract
     const YourContract = await ethers.getContract("YourContract", deployer);
@@ -34,8 +38,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     to: "0x34aA3F359A9D614239015126635CE7732c18fDF3",
     value: ethers.utils.parseEther("0.001")
   })
-  */
-
+  *
+/
   /*
   //If you want to send some ETH to a contract on deploy (make your constructor payable!)
   const yourContract = await deploy("YourContract", [], {

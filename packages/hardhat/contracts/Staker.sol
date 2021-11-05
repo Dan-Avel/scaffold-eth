@@ -1,5 +1,5 @@
-
-pragma solidity >=0.6.0 <0.7.0;
+pragma solidity >=0.8.0 <0.9.0;
+//SPDX-License-Identifier: MIT
 
 import "hardhat/console.sol";
 import "./ExampleExternalContract.sol"; //https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol
@@ -16,9 +16,9 @@ contract Staker {
 
   event Stake(address sender, uint amount);
   
-  constructor(address exampleExternalContractAddress) public {
+  constructor(address exampleExternalContractAddress) {
     exampleExternalContract = ExampleExternalContract(exampleExternalContractAddress);
-    deadline = now + 120 seconds;
+    deadline = block.timestamp + 120 seconds;
   }
 
   modifier aboveThreshold() {
@@ -32,12 +32,12 @@ contract Staker {
   }
 
   modifier afterDeadline() {
-    require( now > deadline, "Deadline has not passed.");
+    require( block.timestamp > deadline, "Deadline has not passed.");
     _;
   }
 
   modifier beforeDeadline() {
-    require( now <= deadline, "Deadline has passed.");
+    require( block.timestamp <= deadline, "Deadline has passed.");
     _;
   }
 
@@ -78,13 +78,14 @@ contract Staker {
 
   // Add a `timeLeft()` view function that returns the time left before the deadline for the frontend
   function timeLeft() public view returns (uint256) {
-    if (now <= deadline) {
-      return deadline - now;
+    if (block.timestamp <= deadline) {
+      return deadline - block.timestamp;
     } else {
       return uint256(0);
     }
   }
 
 // ryan @moonshot coordinator
+// Daniel @BlueFuzzy707
 
 }
