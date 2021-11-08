@@ -7,9 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract YourToken is ERC20{
     //ToDo: add constructor and mint tokens for deployer,
     constructor() ERC20("DanBucks", "DAN") {
-        _mint(msg.sender, 10 * (10 ** 18));
+        _mint(msg.sender, 1000 ether);
     }
 
-    function tranfser() payable public {
+    function tranfser(address to, uint256 value) payable public {
+        emit Transfer(msg.sender, to, value);
     }
 }

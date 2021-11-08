@@ -13,12 +13,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
 
   //Todo: transfer tokens to frontend address
-  const yourToken = await ethers.getContract("YourToken", deployer);
-  await ethers.provider.getSigner().sendTransaction({
-              to: "0x05d5864ff7fc249257f37fbd25f524058aaaf66c",
-              value: ethers.utils.parseEther("20000.00")
-            });
-  const result = await yourToken.transfer("0x80D2FbE61F494C59d97E173bfb6b5aE2F13b4De1", ethers.utils.parseEther("25") );
+  const yourToken = await ethers.getContract("YourToken", deployer);parseEther
+  const result = await yourToken.transfer("0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199", ethers.utils.parseEther("25") );
   /*
     // Getting a previously deployed contract
     const YourContract = await ethers.getContract("YourContract", deployer);
