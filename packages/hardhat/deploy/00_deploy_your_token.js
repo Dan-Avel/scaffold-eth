@@ -13,7 +13,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
 
   //Todo: transfer tokens to frontend address
-  const yourToken = await ethers.getContract("YourToken", deployer);parseEther
+  const yourToken = await ethers.getContract("YourToken", deployer);
   const result = await yourToken.transfer("0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199", ethers.utils.parseEther("25") );
   /*
     // Getting a previously deployed contract
